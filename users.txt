@@ -1,0 +1,5 @@
+alice 100
+bob 50
+charlie 0
+david -10
+eve 200

@@ -1,2 +1,33 @@
-/libanimate
+# Compiled files
+*.o
+animate_server
+animate_client
 
+# Temporary files
+*.dat
+*.mp4
+*.log
+*.swp
+*~
+*.backup
+*.save
+
+# Test files
+test_*
+*_test
+*_simple
+*_fifo
+temp_*
+
+# Core dumps
+core*
+
+# FIFO directory
+/tmp/animate_fifos/
+
+# PDFs (unless required)
+*.pdf
+
+# Backup directories
+libanimate/doc/
+libanimate/

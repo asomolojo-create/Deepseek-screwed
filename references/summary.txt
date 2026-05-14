@@ -1,0 +1,11 @@
+AI Usage Summary
+
+This assignment used AI (DeepSeek) for:
+- Initial code structure guidance
+- Debugging assistance with FIFO communication
+- Help implementing the generate command with ffmpeg
+
+The core implementation (animation library, RPC parsing, threadpool) 
+is original work based on course materials.
+
+Prompts used are saved in separate files in this directory.
