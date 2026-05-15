@@ -24,7 +24,7 @@ int main() {
     setbuf(stdout, NULL);
     printf("Client ready\n");
     
-    // Signal parent that we are ready (autograder requirement)
+    // Signal parent (marking harness) that client is ready
     if (getppid() > 1) kill(getppid(), SIGUSR1);
     
     char input[MAX_CMD];

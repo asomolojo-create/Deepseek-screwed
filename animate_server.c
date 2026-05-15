@@ -14,18 +14,34 @@
 
 static volatile int running = 1;
 
-void handle_signal(int sig) {
+void handle_termination(int sig) {
     if (sig == SIGINT || sig == SIGTERM) running = 0;
 }
 
+void sigusr1_handler(int sig, siginfo_t *info, void *context) {
+    (void)sig;
+    (void)context;
+    if (info->si_pid > 0) {
+        kill(info->si_pid, SIGUSR2);
+    }
+}
+
 int main() {
-    // Must print this exactly and flush
+    // Print server PID (required)
     printf("Server PID: %d\n", getpid());
     fflush(stdout);
     
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
+    // Set up SIGUSR1 to reply with SIGUSR2
+    struct sigaction sa = {0};
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = sigusr1_handler;
+    sigaction(SIGUSR1, &sa, NULL);
     
+    // Termination signals
+    signal(SIGINT, handle_termination);
+    signal(SIGTERM, handle_termination);
+    
+    // Create FIFO
     mkdir(FIFO_BASE, 0755);
     unlink(WELL_KNOWN_FIFO);
     if (mkfifo(WELL_KNOWN_FIFO, 0666) == -1) {
@@ -33,7 +49,7 @@ int main() {
         return 1;
     }
     
-    fprintf(stderr, "Server ready\n");  // stderr is fine for debug
+    fprintf(stderr, "Server ready\n");
     
     while (running) {
         int fd = open(WELL_KNOWN_FIFO, O_RDONLY);
