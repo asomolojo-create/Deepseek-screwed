@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #define FIFO_BASE "/tmp/animate_fifos"
 #define WELL_KNOWN_FIFO FIFO_BASE "/server_fifo"
@@ -13,54 +14,55 @@
 int main() {
     char my_fifo[256];
     snprintf(my_fifo, sizeof(my_fifo), "%s/client_%d", FIFO_BASE, getpid());
-    
     unlink(my_fifo);
-    mkfifo(my_fifo, 0666);
+    if (mkfifo(my_fifo, 0666) == -1) {
+        fprintf(stderr, "mkfifo failed: %s\n", strerror(errno));
+        return 1;
+    }
     
-    printf("Animation Client (PID: %d)\n", getpid());
-    printf("Commands: Login <user>, create_rectangle <w> <h> <color> <filled>\n");
-    printf("          create_canvas <h> <w> <bg>, place_sprite <c> <s> <x> <y>\n");
-    printf("Type 'quit' to exit\n\n");
+    setbuf(stdout, NULL);
+    printf("Client ready\n");
     
     char input[MAX_CMD];
-    char response[MAX_RESP];
-    
-    while (1) {
-        printf("> ");
-        fflush(stdout);
-        
-        if (fgets(input, sizeof(input), stdin) == NULL) break;
+    while (fgets(input, sizeof(input), stdin)) {
         input[strcspn(input, "\n")] = 0;
-        
         if (strcmp(input, "quit") == 0) break;
+        if (strlen(input) == 0) continue;
         
-        // Send: PID:FIFO_NAME:COMMAND
-        char message[MAX_CMD + 512];
-        snprintf(message, sizeof(message), "%d:%s:%s", getpid(), my_fifo, input);
-        
-        int server_fd = open(WELL_KNOWN_FIFO, O_WRONLY);
-        if (server_fd == -1) {
+        if (access(WELL_KNOWN_FIFO, F_OK) == -1) {
             printf("Server not running\n");
             continue;
         }
-        write(server_fd, message, strlen(message));
-        write(server_fd, "\n", 1);
-        close(server_fd);
         
-        // Read response
-        int resp_fd = open(my_fifo, O_RDONLY);
-        if (resp_fd == -1) {
-            printf("Failed to read response\n");
+        char msg[MAX_CMD+512];
+        snprintf(msg, sizeof(msg), "%d:%s:%s", getpid(), my_fifo, input);
+        
+        int sfd = open(WELL_KNOWN_FIFO, O_WRONLY);
+        if (sfd == -1) {
+            printf("Server not running\n");
             continue;
         }
-        int n = read(resp_fd, response, sizeof(response) - 1);
-        if (n > 0) {
-            response[n] = '\0';
-            printf("%s", response);
+        write(sfd, msg, strlen(msg));
+        write(sfd, "\n", 1);
+        close(sfd);
+        
+        int rfd = open(my_fifo, O_RDONLY);
+        if (rfd == -1) {
+            perror("open response FIFO");
+            continue;
         }
-        close(resp_fd);
+        char resp[MAX_RESP];
+        int n = read(rfd, resp, sizeof(resp)-1);
+        if (n > 0) {
+            resp[n] = '\0';
+            printf("%s", resp);
+        } else if (n == 0) {
+            printf("Server closed connection\n");
+        } else {
+            perror("read");
+        }
+        close(rfd);
     }
-    
     unlink(my_fifo);
     return 0;
 }
