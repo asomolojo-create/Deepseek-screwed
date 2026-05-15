@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <errno.h>
 
 #define FIFO_BASE "/tmp/animate_fifos"
@@ -22,6 +23,9 @@ int main() {
     
     setbuf(stdout, NULL);
     printf("Client ready\n");
+    
+    // Signal parent that we are ready (autograder requirement)
+    if (getppid() > 1) kill(getppid(), SIGUSR1);
     
     char input[MAX_CMD];
     while (fgets(input, sizeof(input), stdin)) {
