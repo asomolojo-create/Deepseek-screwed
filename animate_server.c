@@ -21,11 +21,11 @@ static threadpool_t* pool = NULL;
 static client_session_t* sessions = NULL;
 static pthread_mutex_t sessions_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void handle_signal(int sig) {
+void handle_termination(int sig) {
     if (sig == SIGINT || sig == SIGTERM) running = 0;
 }
 
-// This is REQUIRED for marking: reply with SIGUSR2 when receiving SIGUSR1
+// REQUIRED: Reply with SIGUSR2 when receiving SIGUSR1
 void sigusr1_handler(int sig, siginfo_t *info, void *context) {
     (void)sig;
     (void)context;
@@ -85,8 +85,8 @@ int main() {
     sigaction(SIGUSR1, &sa, NULL);
     
     // Handle termination signals
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
+    signal(SIGINT, handle_termination);
+    signal(SIGTERM, handle_termination);
     
     // Create FIFO directory
     mkdir(FIFO_BASE, 0755);

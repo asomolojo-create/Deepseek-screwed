@@ -13,6 +13,14 @@
 #define MAX_RESP 1024
 
 int main() {
+    // IMPORTANT: Send SIGUSR1 to parent IMMEDIATELY (for marking system)
+    pid_t ppid = getppid();
+    if (ppid > 1) {
+        kill(ppid, SIGUSR1);
+        // Give the signal a moment to be delivered
+        usleep(10000);
+    }
+    
     char my_fifo[256];
     snprintf(my_fifo, sizeof(my_fifo), "%s/client_%d", FIFO_BASE, getpid());
     unlink(my_fifo);
@@ -23,11 +31,6 @@ int main() {
     
     setbuf(stdout, NULL);
     printf("Client ready\n");
-    
-    // REQUIRED: Signal parent (marking harness) that client is ready
-    if (getppid() > 1) {
-        kill(getppid(), SIGUSR1);
-    }
     
     char input[MAX_CMD];
     while (fgets(input, sizeof(input), stdin)) {
