@@ -24,8 +24,10 @@ int main() {
     setbuf(stdout, NULL);
     printf("Client ready\n");
     
-    // Signal parent (marking harness) that client is ready
-    if (getppid() > 1) kill(getppid(), SIGUSR1);
+    // REQUIRED: Signal parent (marking harness) that client is ready
+    if (getppid() > 1) {
+        kill(getppid(), SIGUSR1);
+    }
     
     char input[MAX_CMD];
     while (fgets(input, sizeof(input), stdin)) {
