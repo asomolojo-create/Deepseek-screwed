@@ -1,0 +1,3 @@
+Patched rpc_handler.c to avoid double-free of resource_t in remove_global_resource.
+Added logic to remove placement resources associated with a canvas when canvas is destroyed (to avoid use-after-free when animate_destroy_canvas frees placements).
+Rebuilt with ASAN and verified tests.

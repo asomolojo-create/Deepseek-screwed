@@ -173,6 +173,9 @@ void animate_placement_bottom(struct sprite_placement* sprite_placement);
  */
 void animate_destroy_placement(struct sprite_placement* sprite_placement);
 
+/* Accessor to get the canvas associated with a placement (safe opaque access) */
+struct canvas* animate_get_placement_canvas(struct sprite_placement* p);
+
 
 /**
  * @brief Configure sprite animation
@@ -227,12 +230,8 @@ void animate_generate_frame(const struct canvas* canvas,
                             size_t frame, size_t frame_rate,
                             void* buf);
 
+// Accessor functions for generate command
+size_t animate_get_canvas_width(struct canvas* canvas);
+size_t animate_get_canvas_height(struct canvas* canvas);
+
 #endif /* ANIMATE_H */
-
-// Accessor functions for generate command
-size_t animate_get_canvas_width(struct canvas* canvas);
-size_t animate_get_canvas_height(struct canvas* canvas);
-
-// Accessor functions for generate command
-size_t animate_get_canvas_width(struct canvas* canvas);
-size_t animate_get_canvas_height(struct canvas* canvas);

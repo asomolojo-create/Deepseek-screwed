@@ -319,6 +319,10 @@ void animate_destroy_placement(struct sprite_placement* sprite_placement)
     free(sprite_placement);
 }
 
+struct canvas* animate_get_placement_canvas(struct sprite_placement* p) {
+    return p ? p->canvas : NULL;
+}
+
 void animate_set_animation_params(struct sprite_placement* sprite_placement, ssize_t vx, ssize_t vy, ssize_t ax, ssize_t ay)
 {
     if (!sprite_placement) return;
