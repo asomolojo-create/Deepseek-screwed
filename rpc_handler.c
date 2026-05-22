@@ -688,6 +688,40 @@ static void cmd_set_animation_params(client_session_t* client, char* tokens[], i
     snprintf(response, response_size, "%d\n", RPC_SUCCESS);
 }
 
+static void cmd_set_animation_function(client_session_t* client, char* tokens[], int argc,
+                                       char* response, size_t response_size) {
+    if (argc != 2 && argc != 3) {
+        snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR);
+        return;
+    }
+    char* endp;
+    uint64_t placement_h = strtoul(tokens[1], &endp, 10);
+    if (*endp) { snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR); return; }
+    struct sprite_placement* p = get_resource(client, placement_h, 2);
+    if (!p) { snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR); return; }
+    if (argc == 3 && strcasecmp(tokens[2], "none") != 0) {
+        snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR);
+        return;
+    }
+    animate_set_animation_function(p, NULL, NULL);
+    snprintf(response, response_size, "%d\n", RPC_SUCCESS);
+}
+
+static void cmd_frame_size_bytes(client_session_t* client, char* tokens[], int argc,
+                                 char* response, size_t response_size) {
+    if (argc != 2) {
+        snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR);
+        return;
+    }
+    char* endp;
+    uint64_t canvas_h = strtoul(tokens[1], &endp, 10);
+    if (*endp) { snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR); return; }
+    struct canvas* c = get_resource(client, canvas_h, 0);
+    if (!c) { snprintf(response, response_size, "%d\n", RPC_VALUE_ERROR); return; }
+    size_t size = animate_frame_size_bytes(c);
+    snprintf(response, response_size, "0 %zu\n", size);
+}
+
 static void cmd_share_canvas(client_session_t* client, char* tokens[], int argc,
                             char* response, size_t response_size) {
     if (argc != 3) {
@@ -926,39 +960,43 @@ void handle_rpc(client_session_t* client, const char* command, char* response,
         }
     } else if (argc >= 3 && strcasecmp(tokens[0], "set") == 0 && strcasecmp(tokens[1], "animation") == 0 && strcasecmp(tokens[2], "params") == 0) {
         cmd_set_animation_params(client, tokens + 2, argc - 2, response, response_size);
-    } else if (strcasecmp(tokens[0], "create_rectangle") == 0) {
+    } else if (strcasecmp(tokens[0], "create_rectangle") == 0 || strcasecmp(tokens[0], "animate_create_rectangle") == 0) {
         cmd_create_rectangle(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "create_circle") == 0) {
+    } else if (strcasecmp(tokens[0], "create_circle") == 0 || strcasecmp(tokens[0], "animate_create_circle") == 0) {
         cmd_create_circle(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "create_sprite") == 0) {
+    } else if (strcasecmp(tokens[0], "create_sprite") == 0 || strcasecmp(tokens[0], "animate_create_sprite") == 0) {
         cmd_create_sprite(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "create_canvas") == 0) {
+    } else if (strcasecmp(tokens[0], "create_canvas") == 0 || strcasecmp(tokens[0], "animate_create_canvas") == 0) {
         cmd_create_canvas(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "place_sprite") == 0) {
+    } else if (strcasecmp(tokens[0], "place_sprite") == 0 || strcasecmp(tokens[0], "animate_place_sprite") == 0) {
         cmd_place_sprite(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "placement_up") == 0) {
+    } else if (strcasecmp(tokens[0], "placement_up") == 0 || strcasecmp(tokens[0], "animate_placement_up") == 0) {
         cmd_placement_up(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "placement_down") == 0) {
+    } else if (strcasecmp(tokens[0], "placement_down") == 0 || strcasecmp(tokens[0], "animate_placement_down") == 0) {
         cmd_placement_down(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "placement_top") == 0) {
+    } else if (strcasecmp(tokens[0], "placement_top") == 0 || strcasecmp(tokens[0], "animate_placement_top") == 0) {
         cmd_placement_top(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "placement_bottom") == 0) {
+    } else if (strcasecmp(tokens[0], "placement_bottom") == 0 || strcasecmp(tokens[0], "animate_placement_bottom") == 0) {
         cmd_placement_bottom(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "destroy_placement") == 0) {
+    } else if (strcasecmp(tokens[0], "destroy_placement") == 0 || strcasecmp(tokens[0], "animate_destroy_placement") == 0) {
         cmd_destroy_placement(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "destroy_sprite") == 0) {
+    } else if (strcasecmp(tokens[0], "destroy_sprite") == 0 || strcasecmp(tokens[0], "animate_destroy_sprite") == 0) {
         cmd_destroy_sprite(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "destroy_canvas") == 0) {
+    } else if (strcasecmp(tokens[0], "destroy_canvas") == 0 || strcasecmp(tokens[0], "animate_destroy_canvas") == 0) {
         cmd_destroy_canvas(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "set_animation_params") == 0) {
+    } else if (strcasecmp(tokens[0], "set_animation_params") == 0 || strcasecmp(tokens[0], "animate_set_animation_params") == 0) {
         cmd_set_animation_params(client, tokens, argc, response, response_size);
+    } else if (strcasecmp(tokens[0], "animate_set_animation_function") == 0) {
+        cmd_set_animation_function(client, tokens, argc, response, response_size);
+    } else if (strcasecmp(tokens[0], "animate_frame_size_bytes") == 0) {
+        cmd_frame_size_bytes(client, tokens, argc, response, response_size);
     } else if (strcasecmp(tokens[0], "share_canvas") == 0) {
         cmd_share_canvas(client, tokens, argc, response, response_size);
     } else if (strcasecmp(tokens[0], "barrier") == 0) {
         cmd_barrier(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "generate") == 0) {
+    } else if (strcasecmp(tokens[0], "generate") == 0 || strcasecmp(tokens[0], "animate_generate_frame") == 0) {
         cmd_generate(client, tokens, argc, response, response_size);
-    } else if (strcasecmp(tokens[0], "Disconnect") == 0) {
+    } else if (strcasecmp(tokens[0], "Disconnect") == 0 || strcasecmp(tokens[0], "disconnect") == 0) {
         cmd_disconnect(client, tokens, argc, response, response_size);
     } else {
         snprintf(response, response_size, "%d\n", RPC_FAILED);

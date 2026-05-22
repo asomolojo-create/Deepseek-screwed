@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 
     fprintf(stderr, "Opening S2C FIFO %s\n", fifo_s2c);
     fflush(stderr);
-    int s2c_fd = open(fifo_s2c, O_RDONLY | O_NONBLOCK);
+    int s2c_fd = open(fifo_s2c, O_RDONLY);
     if (s2c_fd == -1) {
         perror("open S2C FIFO");
         close(c2s_fd);
@@ -115,14 +115,12 @@ int main(int argc, char* argv[]) {
             n = read(s2c_fd, resp, sizeof(resp) - 1);
             if (n > 0) break;
             if (n == 0) {
-                fprintf(stderr, "S2C read returned 0, retrying\n");
+                fprintf(stderr, "S2C EOF, server downstream closed\n");
                 fflush(stderr);
-                usleep(10000);
-                continue;
+                read_error = 1;
+                break;
             }
             if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                fprintf(stderr, "S2C read would block, retrying\n");
-                fflush(stderr);
                 usleep(10000);
                 continue;
             }
