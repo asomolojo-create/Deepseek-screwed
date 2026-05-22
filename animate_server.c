@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -439,7 +440,10 @@ int main(int argc, char* argv[]) {
             }
         }
         pthread_mutex_unlock(&connections_mutex);
-        usleep(10000);
+        {
+            struct timespec ts_sleep = {0, 10000L * 1000L};
+            nanosleep(&ts_sleep, NULL);
+        }
     }
 
     pthread_mutex_lock(&connections_mutex);
