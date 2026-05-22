@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
         input[strcspn(input, "\n")] = '\0';
 
         if (strlen(input) == 0) continue;
-        if (strcasecmp(input, "quit") == 0 || strcasecmp(input, "Disconnect") == 0 || strcasecmp(input, "disconnect") == 0) break;
+        if (strcasecmp(input, "quit") == 0) break;
 
         if (!logged_in && strncasecmp(input, "Login", 5) != 0) {
             printf("Not logged in\n");

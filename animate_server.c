@@ -40,6 +40,8 @@ typedef struct {
     char pending_buffer[MAX_CMD];
     size_t pending_len;
     response_item_t* response_queue;
+    bool c2s_eof;
+    uint64_t disconnect_sequence;
 } client_connection_t;
 
 static client_connection_t* connections = NULL;
@@ -111,6 +113,8 @@ static void handle_new_client(int client_pid) {
         conn->next_response_seq = 1;
         conn->pending_len = 0;
         conn->response_queue = NULL;
+        conn->c2s_eof = false;
+        conn->disconnect_sequence = 0;
         connection_count++;
         fprintf(stderr, "New client registered %d, total connections=%d\n", client_pid, connection_count);
         fflush(stderr);
@@ -126,7 +130,9 @@ typedef struct {
     char command[MAX_CMD];
 } client_request_t;
 
-static void send_pending_responses(client_connection_t* conn) {
+static bool send_pending_responses(int index) {
+    client_connection_t* conn = &connections[index];
+    bool remove_after_send = false;
     while (conn && conn->response_queue && conn->response_queue->sequence == conn->next_response_seq) {
         response_item_t* item = conn->response_queue;
         conn->response_queue = item->next;
@@ -135,18 +141,26 @@ static void send_pending_responses(client_connection_t* conn) {
             if (written < 0) {
                 fprintf(stderr, "Failed to send response to client %d: %s\n", conn->client_pid, strerror(errno));
                 fflush(stderr);
+                remove_after_send = true;
             } else {
                 fprintf(stderr, "Sent response to client %d: '%s'\n", conn->client_pid, item->response);
                 fflush(stderr);
             }
         }
+        if (item->sequence == conn->disconnect_sequence) {
+            remove_after_send = true;
+        }
         conn->next_response_seq++;
         free(item->response);
         free(item);
+        if (remove_after_send) break;
     }
+    return remove_after_send;
 }
 
-static void store_response(int client_pid, uint64_t sequence, const char* response) {
+static void remove_connection(int index);
+
+static void store_response(int client_pid, uint64_t sequence, const char* response, bool disconnect) {
     pthread_mutex_lock(&connections_mutex);
     for (int i = 0; i < connection_count; i++) {
         if (connections[i].client_pid == client_pid) {
@@ -164,11 +178,17 @@ static void store_response(int client_pid, uint64_t sequence, const char* respon
                 return;
             }
             item->next = NULL;
+            if (disconnect) {
+                conn->disconnect_sequence = sequence;
+            }
             response_item_t** cur = &conn->response_queue;
             while (*cur && (*cur)->sequence < item->sequence) cur = &(*cur)->next;
             item->next = *cur;
             *cur = item;
-            send_pending_responses(conn);
+            bool removed = send_pending_responses(i);
+            if (removed) {
+                remove_connection(i);
+            }
             break;
         }
     }
@@ -195,7 +215,8 @@ void process_request(void* arg) {
         handle_rpc(client, req->command, response, MAX_RESP);
     }
 
-    store_response(req->client_pid, req->sequence, response);
+    bool disconnect = strcasecmp(req->command, "Disconnect") == 0 || strcasecmp(req->command, "disconnect") == 0;
+    store_response(req->client_pid, req->sequence, response, disconnect);
     free(req);
 }
 
@@ -331,7 +352,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < connection_count; i++) {
             client_connection_t* conn = &connections[i];
 
-            if (conn->c2s_fd < 0) {
+            if (conn->c2s_fd < 0 && !conn->c2s_eof) {
                 char fifo_c2s[256];
                 snprintf(fifo_c2s, sizeof(fifo_c2s), "/tmp/FIFO_C2S_%d", conn->client_pid);
                 int fd = open(fifo_c2s, O_RDONLY | O_NONBLOCK);
@@ -404,10 +425,12 @@ int main(int argc, char* argv[]) {
                     i--;
                     continue;
                 } else if (n == 0) {
-                    fprintf(stderr, "Client %d closed C2S connection\n", conn->client_pid);
+                    fprintf(stderr, "Client %d closed C2S connection, preserving pending responses\n", conn->client_pid);
                     fflush(stderr);
-                    remove_connection(i);
-                    i--;
+                    conn->c2s_eof = true;
+                    close(conn->c2s_fd);
+                    conn->c2s_fd = -1;
+                    conn->pending_len = 0;
                     continue;
                 }
             }
